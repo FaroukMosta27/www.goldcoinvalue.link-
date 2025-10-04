@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gold & Silver Prices</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: linear-gradient(90deg, #d4af37, #c0c0c0);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    main {
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: center;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gold & Silver Live Prices</h1>
+    <p>USD, EUR – Powered by MetalPriceAPI</p>
+  </header>
+  <main>
+    <h2>Current Prices</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metal</th>
+          <th>Price (per Ounce)</th>
+        </tr>
+      </thead>
+      <tbody id="price-table">
+        <tr><td colspan="2">Loading...</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Price Trend (Last 7 Days)</h2>
+    <canvas id="priceChart" width="400" height="200"></canvas>
+  </main>
+
+  <script>
+    const API_KEY = "2b657ca573661b94c52fc09825061228";
+    const BASE_URL = "https://api.metalpriceapi.com/v1";
+
+    async function fetchLatest() {
+      const url = `${BASE_URL}/latest?api_key=${API_KEY}&base=USD&currencies=EUR,XAU,XAG`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data;
+    }
+
+    // ????? ?????? ????? ??? 7 ???? ???????
+    function generateHistory(basePriceGold, basePriceSilver, days = 7) {
+      let history = [];
+      for (let i = days - 1; i >= 0; i--) {
+        let d = new Date();
+        d.setDate(d.getDate() - i);
+        let dateStr = d.toISOString().split("T")[0];
+
+        // ??????? ??????? ±2%
+        let gold = basePriceGold * (1 + (Math.random() - 0.5) / 25);
+        let silver = basePriceSilver * (1 + (Math.random() - 0.5) / 25);
+
+        history.push({ date: dateStr, gold, silver });
+      }
+      return history;
+    }
+
+    async function render() {
+      const latest = await fetchLatest();
+      const goldPrice = 1 / latest.rates.XAU;
+      const silverPrice = 1 / latest.rates.XAG;
+
+      // ???? ???????
+      const tbody = document.getElementById("price-table");
+      tbody.innerHTML = `
+        <tr><td>Gold (XAU)</td><td>${goldPrice.toFixed(2)} USD</td></tr>
+        <tr><td>Silver (XAG)</td><td>${silverPrice.toFixed(2)} USD</td></tr>
+        <tr><td>EUR</td><td>${latest.rates.EUR.toFixed(4)} per USD</td></tr>
+      `;
+
+      // ?????? ?????
+      const history = generateHistory(goldPrice, silverPrice, 7);
+      const labels = history.map(d => d.date);
+      const goldPrices = history.map(d => d.gold.toFixed(2));
+      const silverPrices = history.map(d => d.silver.toFixed(2));
+
+      // ??? ?????
+      const ctx = document.getElementById("priceChart").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Gold (USD/oz)",
+              data: goldPrices,
+              borderColor: "gold",
+              fill: false,
+              tension: 0.2
+            },
+            {
+              label: "Silver (USD/oz)",
+              data: silverPrices,
+              borderColor: "silver",
+              fill: false,
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "top" },
+            title: { display: true, text: "Gold & Silver Price Trend (Simulated 7 Days)" }
+          }
+        }
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
